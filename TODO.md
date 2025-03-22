@@ -1,0 +1,13 @@
+- [ ] Fix "AI Thinking" bug
+- [ ] Fix draw for dealer popup
+- [ ] Fix scoring
+- [ ] add function for determining best discard
+- [ ] incorporate best discard into AI
+- [ ] add help dialog that tells player what to discard
+- [ ] add theme settings - light vs dark mode, card and accent color options
+- [ ] add point scoring messages during pegging
+- [ ] add points explanation during hand scoring
+- [ ] improve AI pegging logic
+- [ ] add AI difficulty setting
+- [ ] add ad banner and analytics
+- [ ] publish to app store
