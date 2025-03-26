@@ -270,7 +270,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...get().scores,
         [scoringPlayer]: get().scores[scoringPlayer] + additionalPoints,
       },
-      currentPlayer: (dealer === 'user' ? 'ai' : 'user') as Player,
+      currentPlayer: dealer === 'user' ? 'ai' : 'user',
     };
 
     set(newState);
@@ -287,18 +287,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pass: () => {
-    const store = get();
-    if (store.currentPlayer !== 'user') return;
+    const { currentPlayer, playerHand, aiHand } = get();
+    if (currentPlayer !== 'user') return;
 
     set({ currentPlayer: 'ai' });
-    saveGameState({ ...store, currentPlayer: 'ai' });
-    const aiCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
-    if (aiCard) {
-      store.playCard(aiCard);
-    } else {
-      // Neither player can play
-      const lastPlayer = store.pegging.lastPlayedBy;
-    }
+    saveGameState({ ...get(), currentPlayer: 'ai' });
 
     setTimeout(() => {
       const store = get();
@@ -307,56 +300,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
         if (aiCard) {
           store.playCard(aiCard);
         } else {
-          const nextPlayer = store.pegging.lastPlayedBy === 'user' ? 'ai' : 'user';
           const lastPlayer = store.pegging.lastPlayedBy;
           if (lastPlayer && store.pegging.total > 0) {
             const points = store.pegging.total === 31 ? 2 : 1;
-            const message = `${lastPlayer === 'user' ? 'You' : 'AI'} scored ${points} ${points === 1 ? 'point' : 'points'} for last card`;
-            
             const newState = {
               ...store,
               scores: {
                 ...store.scores,
                 [lastPlayer]: store.scores[lastPlayer] + points,
               },
-              scoringMessage: message,
-              waitingForAcknowledgement: true,
+              pegging: {
+                cards: [],
+                total: 0,
+                lastPlayedBy: null,
+              },
+              currentPlayer: 'user',
             };
             set(newState);
             saveGameState(newState);
           }
-          
-          const newState = {
-            ...store,
-            pegging: {
-              cards: [],
-              total: 0,
-                lastPlayedBy: null,
-              },
-              currentPlayer: nextPlayer as Player,
-            };
-            
-            // If it's AI's turn after reset, trigger AI play after a delay
-            if (nextPlayer === 'ai') {
-              setTimeout(() => {
-                const aiCard = selectAIPegCard(store.aiHand, [], 0, store.difficulty);
-                if (aiCard) {
-                  store.playCard(aiCard);
-                }
-              }, 1000);
-            }
-            
-            // If both hands are empty, move to counting phase
-            if (store.playerHand.length === 0 && store.aiHand.length === 0) {
-              newState.phase = 'counting';
-            }
-            
-            set(newState);
-            saveGameState(newState);
-            
-            if (newState.phase === 'counting') {
-              setTimeout(() => get().startScoring(), 1000);
-            }
         }
       }
     }, 1000);
@@ -384,16 +346,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const lastPlayer = pegging.lastPlayedBy;
       if (lastPlayer && pegging.total > 0) {
         const points = pegging.total === 31 ? 2 : 1;
-        const message = `${lastPlayer === 'user' ? 'You' : 'AI'} scored ${points} ${points === 1 ? 'point' : 'points'} for last card`;
-        
         const newState = {
           ...get(),
           scores: {
             ...get().scores,
             [lastPlayer]: get().scores[lastPlayer] + points,
           },
-          scoringMessage: message,
-          waitingForAcknowledgement: true,
+          pegging: {
+            cards: [],
+            total: 0,
+            lastPlayedBy: null,
+          },
         };
         set(newState);
         saveGameState(newState);
@@ -418,7 +381,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...get(),
         playerHand: updatedPlayerHand,
         pegging: updatedPegging,
-        currentPlayer: 'ai' as Player,
+        currentPlayer: 'ai',
         originalPlayerHand,
         originalAIHand,
       };
@@ -439,24 +402,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
         saveGameState(stateWithPoints);
 
         if (updatedPlayerHand.length === 0 && aiHand.length === 0) {
-          awardLastPlayerPoints();
           const finalState = {
             ...stateWithPoints,
             phase: 'counting' as GamePhase,
           };
           set(finalState);
           saveGameState(finalState);
+          setTimeout(() => get().startScoring(), 1000);
           return;
         }
       } else {
         if (updatedPlayerHand.length === 0 && aiHand.length === 0) {
-          awardLastPlayerPoints();
           const finalState = {
             ...newState,
             phase: 'counting' as GamePhase,
           };
           set(finalState);
           saveGameState(finalState);
+          setTimeout(() => get().startScoring(), 1000);
           return;
         }
       }
@@ -495,7 +458,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...get(),
         aiHand: updatedAIHand,
         pegging: updatedPegging,
-        currentPlayer: 'user' as Player,
+        currentPlayer: 'user',
         originalPlayerHand,
         originalAIHand,
       };
@@ -516,24 +479,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
         saveGameState(stateWithPoints);
 
         if (updatedAIHand.length === 0 && playerHand.length === 0) {
-          awardLastPlayerPoints();
           const finalState = {
             ...stateWithPoints,
             phase: 'counting' as GamePhase,
           };
           set(finalState);
           saveGameState(finalState);
+          setTimeout(() => get().startScoring(), 1000);
           return;
         }
       } else {
         if (updatedAIHand.length === 0 && playerHand.length === 0) {
-          awardLastPlayerPoints();
           const finalState = {
             ...newState,
             phase: 'counting' as GamePhase,
           };
           set(finalState);
           saveGameState(finalState);
+          setTimeout(() => get().startScoring(), 1000);
           return;
         }
       }
@@ -588,33 +551,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   acknowledgeScore: () => {
-    const { dealer, phase, scoringMessage, pegging } = get();
-
-    if (phase === 'pegging') {
-      const newState = {
-        ...get(),
-        scoringMessage: null,
-        waitingForAcknowledgement: false,
-        pegging: {
-          cards: [],
-          total: 0,
-          lastPlayedBy: null,
-        },
-      };
-
-      // If both hands are empty after acknowledging the last card, move to counting
-      const { playerHand, aiHand } = get();
-      if (playerHand.length === 0 && aiHand.length === 0) {
-        newState.phase = 'counting';
-        set(newState);
-        saveGameState(newState);
-        setTimeout(() => get().startScoring(), 1000);
-      } else {
-        set(newState);
-        saveGameState(newState);
-      }
-      return;
-    }
+    const { dealer, phase, scoringMessage } = get();
 
     if (phase === 'counting') {
       // If no message is shown yet, start with non-dealer's hand
@@ -670,8 +607,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           aiHand,
           crib: [],
           starter: null,
-          dealer: newDealer as Player,
-          currentPlayer: (newDealer === 'user' ? 'ai' : 'user') as Player,
+          dealer: newDealer,
+          currentPlayer: newDealer === 'user' ? 'ai' : 'user',
           scoringMessage: null,
           waitingForAcknowledgement: false,
           pegging: {
@@ -761,3 +698,5 @@ function isConsecutive(numbers: number[]): boolean {
   }
   return true;
 }
+
+export { useGameStore }
