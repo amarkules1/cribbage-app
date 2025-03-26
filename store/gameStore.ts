@@ -270,7 +270,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...get().scores,
         [scoringPlayer]: get().scores[scoringPlayer] + additionalPoints,
       },
-      currentPlayer: dealer === 'user' ? 'ai' : 'user',
+      currentPlayer: (dealer === 'user' ? 'ai' : 'user') as Player,
     };
 
     set(newState);
@@ -287,11 +287,18 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   pass: () => {
-    const { currentPlayer, playerHand, aiHand } = get();
-    if (currentPlayer !== 'user') return;
+    const store = get();
+    if (store.currentPlayer !== 'user') return;
 
     set({ currentPlayer: 'ai' });
-    saveGameState({ ...get(), currentPlayer: 'ai' });
+    saveGameState({ ...store, currentPlayer: 'ai' });
+    const aiCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
+    if (aiCard) {
+      store.playCard(aiCard);
+    } else {
+      // Neither player can play
+      const lastPlayer = store.pegging.lastPlayedBy;
+    }
 
     setTimeout(() => {
       const store = get();
@@ -300,6 +307,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         if (aiCard) {
           store.playCard(aiCard);
         } else {
+          const nextPlayer = store.pegging.lastPlayedBy === 'user' ? 'ai' : 'user';
           const lastPlayer = store.pegging.lastPlayedBy;
           if (lastPlayer && store.pegging.total > 0) {
             const points = store.pegging.total === 31 ? 2 : 1;
@@ -316,17 +324,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
             };
             set(newState);
             saveGameState(newState);
-          } else {
-            // Neither player can play - reset the count
-            const newState = {
-              ...store,
-              pegging: {
-                cards: [],
-                total: 0,
+          }
+          
+          const newState = {
+            ...store,
+            pegging: {
+              cards: [],
+              total: 0,
                 lastPlayedBy: null,
               },
-              currentPlayer: 'user',
+              currentPlayer: nextPlayer as Player,
             };
+            
+            // If it's AI's turn after reset, trigger AI play after a delay
+            if (nextPlayer === 'ai') {
+              setTimeout(() => {
+                const aiCard = selectAIPegCard(store.aiHand, [], 0, store.difficulty);
+                if (aiCard) {
+                  store.playCard(aiCard);
+                }
+              }, 1000);
+            }
             
             // If both hands are empty, move to counting phase
             if (store.playerHand.length === 0 && store.aiHand.length === 0) {
@@ -339,7 +357,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
             if (newState.phase === 'counting') {
               setTimeout(() => get().startScoring(), 1000);
             }
-          }
         }
       }
     }, 1000);
@@ -401,7 +418,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...get(),
         playerHand: updatedPlayerHand,
         pegging: updatedPegging,
-        currentPlayer: 'ai',
+        currentPlayer: 'ai' as Player,
         originalPlayerHand,
         originalAIHand,
       };
@@ -478,7 +495,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         ...get(),
         aiHand: updatedAIHand,
         pegging: updatedPegging,
-        currentPlayer: 'user',
+        currentPlayer: 'user' as Player,
         originalPlayerHand,
         originalAIHand,
       };
@@ -653,8 +670,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           aiHand,
           crib: [],
           starter: null,
-          dealer: newDealer,
-          currentPlayer: newDealer === 'user' ? 'ai' : 'user',
+          dealer: newDealer as Player,
+          currentPlayer: (newDealer === 'user' ? 'ai' : 'user') as Player,
           scoringMessage: null,
           waitingForAcknowledgement: false,
           pegging: {
@@ -744,5 +761,3 @@ function isConsecutive(numbers: number[]): boolean {
   }
   return true;
 }
-
-export { useGameStore }
