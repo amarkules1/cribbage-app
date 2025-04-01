@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { createDeck, shuffleDeck, calculateHandScore, getCardValue } from '@/utils/cards';
+import { createDeck, shuffleDeck, shuffleNewDeck, calculateHandScore, getCardValue } from '@/utils/cards';
 import { selectAIDiscard, selectAIPegCard } from '@/utils/ai';
 import {
   saveGameState,
@@ -157,49 +157,26 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const needsRedraw = userCard.rank === aiCard.rank;
     
     let dealer: Player | null = null;
-    let nextPhase: GamePhase = 'selecting-dealer';
 
     if (!needsRedraw) {
       const userValue = RANKS.indexOf(userCard.rank);
       const aiValue = RANKS.indexOf(aiCard.rank);
       dealer = userValue < aiValue ? 'user' : 'ai';
-      nextPhase = 'dealing';
     }
 
     const newState = {
       ...get(),
-      deck: needsRedraw ? shuffleDeck(deck) : remainingDeck,
+      deck: shuffleNewDeck(),
       dealerSelection: {
         userCard,
         aiCard,
         needsRedraw,
       },
       dealer,
-      phase: nextPhase,
     };
 
     set(newState);
     saveGameState(newState);
-
-    if (!needsRedraw) {
-      setTimeout(() => {
-        const { deck } = get();
-        const playerHand = deck.slice(0, 6);
-        const aiHand = deck.slice(6, 12);
-        const remainingDeck = deck.slice(12);
-
-        const newState = {
-          ...get(),
-          deck: remainingDeck,
-          playerHand,
-          aiHand,
-          phase: 'discarding' as GamePhase,
-        };
-
-        set(newState);
-        saveGameState(newState);
-      }, 2000);
-    }
   },
 
   loadSavedGame: async () => {
@@ -698,5 +675,3 @@ function isConsecutive(numbers: number[]): boolean {
   }
   return true;
 }
-
-export { useGameStore }

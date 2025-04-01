@@ -28,6 +28,11 @@ export function shuffleDeck(deck: Card[]): Card[] {
   return shuffled;
 }
 
+export function shuffleNewDeck(): Card[] {
+  const deck = createDeck();
+  return shuffleDeck(deck);
+}
+
 export function getCardValue(rank: Rank): number {
   if (rank === 'A') return 1;
   if (['J', 'Q', 'K'].includes(rank)) return 10;

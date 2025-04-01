@@ -53,7 +53,7 @@ export function GameBoard() {
   };
 
   const getDealerMessage = () => {
-    if (!dealerSelection.userCard || !dealerSelection.aiCard) return null;
+    if (!dealerSelection.userCard || !dealerSelection.aiCard) {return null;}
     
     if (dealerSelection.needsRedraw) {
       return `Both players drew ${dealerSelection.userCard.rank}s. Draw again!`;

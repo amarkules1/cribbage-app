@@ -1,5 +1,5 @@
 - [ ] Fix "AI Thinking" bug
-- [ ] Fix draw for dealer popup
+- [x] Fix draw for dealer popup
 - [ ] Fix scoring
 - [ ] add function for determining best discard
 - [ ] incorporate best discard into AI
