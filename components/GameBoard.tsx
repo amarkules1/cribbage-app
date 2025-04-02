@@ -74,6 +74,12 @@ export function GameBoard() {
           <Text style={styles.phaseText}>COUNTING</Text>
           <ScoreBoard userScore={scores.user} aiScore={scores.ai} />
           <Hand cards={originalAIHand} />
+          {starter && (
+            <View style={styles.starterContainer}>
+              <Text style={styles.label}>Starter</Text>
+              <Hand cards={[starter]} disabled />
+            </View>
+          )}
         </View>
 
         <View style={styles.middleSection}>
@@ -85,12 +91,6 @@ export function GameBoard() {
               </Pressable>
             )}
           </View>
-          {starter && (
-            <View style={styles.starterContainer}>
-              <Text style={styles.label}>Starter</Text>
-              <Hand cards={[starter]} disabled />
-            </View>
-          )}
         </View>
 
         <View style={styles.bottomSection}>
@@ -162,13 +162,13 @@ export function GameBoard() {
               </View>
             </View>
           )}
+        </View>
           {starter && (
             <View style={styles.starterContainer}>
               <Text style={styles.label}>Starter</Text>
               <Hand cards={[starter]} disabled />
             </View>
           )}
-        </View>
       </View>
 
       <View style={styles.middleSection}>
@@ -334,6 +334,7 @@ const styles = StyleSheet.create({
   starterContainer: {
     alignItems: 'center',
     marginLeft: 'auto',
+    marginTop: 16,
   },
   handContainer: {
     flexDirection: 'row',
@@ -366,5 +367,3 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 });
-
-export { GameBoard }

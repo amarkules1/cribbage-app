@@ -1,6 +1,11 @@
-- [ ] Fix "AI Thinking" bug
+- [x] Fix "AI Thinking" bug
 - [x] Fix draw for dealer popup
-- [ ] Fix scoring
+- [x] move hand score popup down
+- [ ] make ure crib shows during crib scoring
+- [ ] add pauses where needed
+- [ ] Scroll pegging to show last played cards
+- [ ] Fix scoring during pegging
+- [ ] Fix scoring during hand scoring
 - [ ] add function for determining best discard
 - [ ] incorporate best discard into AI
 - [ ] add help dialog that tells player what to discard
