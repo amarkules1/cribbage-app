@@ -231,7 +231,7 @@ export function GameBoard() {
               if (phase === 'discarding') {
                 handleCardSelect(card);
               } else if (isPeggingPhase && currentPlayer === 'user') {
-                playCard(card);
+                playCard(card, 'user');
               }
             }}
             selectedCards={phase === 'discarding' ? selectedCards : []}

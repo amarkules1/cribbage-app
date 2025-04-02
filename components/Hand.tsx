@@ -1,6 +1,7 @@
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { Card } from './Card';
 import type { Card as CardType } from '@/types/game';
+import { useRef } from 'react';
 
 interface HandProps {
   cards: CardType[];
@@ -11,8 +12,13 @@ interface HandProps {
 }
 
 export function Hand({ cards, faceDown, selectedCards = [], onCardPress, disabled }: HandProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  // keep scrolled to last card by default
+    
   return (
     <ScrollView 
+      ref={scrollRef}
+      onContentSizeChange={() => scrollRef.current?.scrollToEnd({animated: false})}
       horizontal 
       showsHorizontalScrollIndicator={false} 
       contentContainerStyle={styles.container}

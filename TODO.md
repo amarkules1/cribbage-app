@@ -2,10 +2,10 @@
 - [x] Fix draw for dealer popup
 - [x] move hand score popup down
 - [x] make sure crib shows during crib scoring
-- [ ] fix first turn after pass logic
+- [x] fix first turn after pass logic
 - [ ] add pauses where needed
-- [ ] Scroll pegging to show last played cards
-- [ ] Fix scoring during pegging
+- [x] Scroll pegging to show last played cards
+- [x] Fix scoring during pegging
 - [ ] Fix scoring during hand scoring
 - [ ] add function for determining best discard
 - [ ] incorporate best discard into AI

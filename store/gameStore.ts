@@ -25,7 +25,7 @@ interface GameStore extends GameState {
   drawForDealer: () => void;
   discardToCrib: (cards: Card[]) => void;
   cutDeck: () => void;
-  playCard: (card: Card) => void;
+  playCard: (card: Card, player: Player) => void;
   pass: () => void;
   countHand: (player: Player) => HandScore;
   stats: GameStats;
@@ -257,7 +257,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       setTimeout(() => {
         const store = get();
         if (store.currentPlayer === 'ai' && store.phase === 'pegging') {
-          store.playCard(selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty)!);
+          store.playCard(selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty)!, 'ai');
         }
       }, 1000);
     }
@@ -275,33 +275,49 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (store.currentPlayer === 'ai' && store.phase === 'pegging') {
         const aiCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
         if (aiCard) {
-          store.playCard(aiCard);
+          store.playCard(aiCard, 'ai');
         } else {
           const lastPlayer = store.pegging.lastPlayedBy;
           if (lastPlayer && store.pegging.total > 0) {
-            const points = store.pegging.total === 31 ? 2 : 1;
             const newState = {
               ...store,
-              scores: {
-                ...store.scores,
-                [lastPlayer]: store.scores[lastPlayer] + points,
-              },
               pegging: {
                 cards: [],
                 total: 0,
                 lastPlayedBy: null,
               },
-              currentPlayer: 'user',
+              currentPlayer: lastPlayer === 'user' ? 'ai' : 'user',
+              lastPeggingActionMessage: lastPlayer === 'user' ? 'You passed' : 'AI passed',
             };
             set(newState);
             saveGameState(newState);
+          }
+          if (get().currentPlayer === 'ai') {
+            const storage = get();
+            setTimeout(() => {
+              const nextCard = selectAIPegCard(storage.aiHand, storage.pegging.cards, storage.pegging.total, storage.difficulty);
+              if (nextCard) {
+                storage.playCard(nextCard, 'ai');
+              } else {
+                const lastPlayer = storage.pegging.lastPlayedBy;
+                if (lastPlayer && storage.pegging.total > 0) {
+                  const newState = {
+                    ...storage,
+                    lastPeggingActionMessage: 'AI passed',
+                    currentPlayer: lastPlayer === 'user' ? 'ai' : 'user',
+                  };
+                  set(newState);
+                  saveGameState(newState);
+                }
+              }
+            }, 1000);
           }
         }
       }
     }, 1000);
   },
 
-  playCard: (card) => {
+  playCard: (card, player) => {
     const { 
       pegging,
       currentPlayer,
@@ -313,191 +329,296 @@ export const useGameStore = create<GameStore>((set, get) => ({
       originalAIHand
     } = get();
 
+    let pointsToAward = 0;
+    let pointsReason = '';
+
+    // check if we're in pegging phase
     if (phase !== 'pegging') return;
-
-    const canPlay = (hand: Card[]): boolean => {
-      return hand.some(card => getCardValue(card.rank) + pegging.total <= 31);
+    // check if it's the player's turn
+    if (player !== currentPlayer) return;
+    // check if the card can be played
+    if (!get().canPlay([card])) return;
+    // add card to count
+    let peggingTotal = pegging.total + getCardValue(card.rank);
+    let newPeggingCards = [...pegging.cards, card];
+    // remove card from player hand
+    const newPlayerHand = playerHand.filter(c => c.rank !== card.rank || c.suit !== card.suit);
+    const newAIHand = aiHand.filter(c => c.rank !== card.rank || c.suit !== card.suit);
+    const newCurrentPlayer = player === 'user' ? 'ai' : 'user';
+    // update state 
+    const newState1 = {
+      ...get(),
+      playerHand: newPlayerHand,
+      aiHand: newAIHand,
+      currentPlayer: newCurrentPlayer,
+      pegging: {
+        ...get().pegging,
+        lastPlayedBy: player,
+        cards: newPeggingCards,
+        total: peggingTotal,
+      },
     };
-
-    const awardLastPlayerPoints = () => {
-      const lastPlayer = pegging.lastPlayedBy;
-      if (lastPlayer && pegging.total > 0) {
-        const points = pegging.total === 31 ? 2 : 1;
-        const newState = {
-          ...get(),
-          scores: {
-            ...get().scores,
-            [lastPlayer]: get().scores[lastPlayer] + points,
-          },
-          pegging: {
-            cards: [],
-            total: 0,
-            lastPlayedBy: null,
-          },
-        };
-        set(newState);
-        saveGameState(newState);
+    set(newState1);
+    saveGameState(newState1);
+    // determine if any points should be awarded
+    if (peggingTotal === 31) {
+      pointsToAward = 2;
+      pointsReason = '31';
+    } else if (peggingTotal === 15) {
+      pointsToAward = 1;
+      pointsReason = '15';
+    } else if (!get().canPlay(playerHand) && !get().canPlay(aiHand)) {
+      pointsToAward = 1;
+      pointsReason = (playerHand.length === 0 && aiHand.length === 0) ? 'Last card' : 'Go';
+    }
+    const pointsForRun = getPeggingPointsForRun(newPeggingCards);
+    if (pointsForRun > 0) {
+      pointsToAward += pointsForRun;
+      pointsReason = pointsReason ? pointsReason + ', Run of ' + pointsForRun : 'Run of ' + pointsForRun;
+    }
+    const pointsForPair = getPeggingPointsForPair(newPeggingCards);
+    if (pointsForPair > 0) {
+      pointsToAward += pointsForPair;
+      if (pointsForPair === 2) {
+        pointsReason = pointsReason ? pointsReason + ', Pair' : 'Pair';
+      } else if (pointsForPair === 6) {
+        pointsReason = pointsReason ? pointsReason + ', Three of a Kind' : 'Three of a Kind';
+      } else if (pointsForPair === 12) {
+        pointsReason = pointsReason ? pointsReason + ', Four of a Kind' : 'Four of a Kind';
       }
+    }
+    // update points, and turn
+    const newState = {
+      ...get(),
+      playerHand: newPlayerHand,
+      aiHand: newAIHand,
+      currentPlayer: newCurrentPlayer,
+      scores: {
+        ...get().scores,
+        [player]: get().scores[player] + pointsToAward,
+      },
+      lastPeggingActionMessage: pointsReason,
+
     };
+    set(newState);
+    saveGameState(newState);
 
-    if (currentPlayer === 'user') {
-      const newTotal = getCardValue(card.rank) + pegging.total;
-      if (newTotal > 31) return;
-
-      const updatedPegging = {
-        cards: [...pegging.cards, card],
-        total: newTotal,
-        lastPlayedBy: currentPlayer,
-      };
-
-      const updatedPlayerHand = playerHand.filter(
-        c => c.rank !== card.rank || c.suit !== card.suit
-      );
-
+    if (newPlayerHand.length === 0 && newAIHand.length === 0) {
       const newState = {
         ...get(),
-        playerHand: updatedPlayerHand,
-        pegging: updatedPegging,
-        currentPlayer: 'ai',
-        originalPlayerHand,
-        originalAIHand,
+        phase: 'counting' as GamePhase,
       };
-
       set(newState);
       saveGameState(newState);
+      setTimeout(() => get().startScoring(), 1000);
+      return;
+    }
 
-      const points = calculatePeggingPoints(updatedPegging.cards);
-      if (points > 0) {
-        const stateWithPoints = {
-          ...newState,
-          scores: {
-            ...newState.scores,
-            user: newState.scores.user + points,
-          },
-        };
-        set(stateWithPoints);
-        saveGameState(stateWithPoints);
-
-        if (updatedPlayerHand.length === 0 && aiHand.length === 0) {
-          const finalState = {
-            ...stateWithPoints,
-            phase: 'counting' as GamePhase,
-          };
-          set(finalState);
-          saveGameState(finalState);
-          setTimeout(() => get().startScoring(), 1000);
-          return;
-        }
-      } else {
-        if (updatedPlayerHand.length === 0 && aiHand.length === 0) {
-          const finalState = {
-            ...newState,
-            phase: 'counting' as GamePhase,
-          };
-          set(finalState);
-          saveGameState(finalState);
-          setTimeout(() => get().startScoring(), 1000);
-          return;
-        }
-      }
-
+    // if it's now the AI's turn, play a card
+    if (newCurrentPlayer === 'ai') {
+      const storage = get();
       setTimeout(() => {
-        const store = get();
-        if (store.currentPlayer === 'ai' && store.phase === 'pegging') {
-          const aiCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
-          if (aiCard) {
-            store.playCard(aiCard);
-          } else {
-            if (!canPlay(store.playerHand)) {
-              awardLastPlayerPoints();
-            }
-            set({ ...store, currentPlayer: 'user' });
-            saveGameState({ ...store, currentPlayer: 'user' });
+        const nextCard = selectAIPegCard(aiHand, pegging.cards, pegging.total, difficulty);
+        if (nextCard) {
+          storage.playCard(nextCard, 'ai');
+        } else {
+          const lastPlayer = storage.pegging.lastPlayedBy;
+          if (lastPlayer && storage.pegging.total > 0) {
+            const newState = {
+              ...storage,
+              lastPeggingActionMessage: 'AI passed',
+              currentPlayer: 'user',
+              pegging: {
+                ...storage.pegging,
+              },
+            };
+            set(newState);
+            saveGameState(newState);
           }
         }
       }, 1000);
-
-    } else {
-      const newTotal = getCardValue(card.rank) + pegging.total;
-      if (newTotal > 31) return;
-
-      const updatedPegging = {
-        cards: [...pegging.cards, card],
-        total: newTotal,
-        lastPlayedBy: currentPlayer,
-      };
-
-      const updatedAIHand = aiHand.filter(
-        c => c.rank !== card.rank || c.suit !== card.suit
-      );
-
-      const newState = {
-        ...get(),
-        aiHand: updatedAIHand,
-        pegging: updatedPegging,
-        currentPlayer: 'user',
-        originalPlayerHand,
-        originalAIHand,
-      };
-
-      set(newState);
-      saveGameState(newState);
-
-      const points = calculatePeggingPoints(updatedPegging.cards);
-      if (points > 0) {
-        const stateWithPoints = {
-          ...newState,
-          scores: {
-            ...newState.scores,
-            ai: newState.scores.ai + points,
-          },
-        };
-        set(stateWithPoints);
-        saveGameState(stateWithPoints);
-
-        if (updatedAIHand.length === 0 && playerHand.length === 0) {
-          const finalState = {
-            ...stateWithPoints,
-            phase: 'counting' as GamePhase,
-          };
-          set(finalState);
-          saveGameState(finalState);
-          setTimeout(() => get().startScoring(), 1000);
-          return;
-        }
-      } else {
-        if (updatedAIHand.length === 0 && playerHand.length === 0) {
-          const finalState = {
-            ...newState,
-            phase: 'counting' as GamePhase,
-          };
-          set(finalState);
-          saveGameState(finalState);
-          setTimeout(() => get().startScoring(), 1000);
-          return;
-        }
-      }
-
-      if (!canPlay(playerHand)) {
-        const aiCanPlay = canPlay(updatedAIHand);
-        if (!aiCanPlay) {
-          awardLastPlayerPoints();
-        } else {
-          set({ ...newState, currentPlayer: 'ai' });
-          saveGameState({ ...newState, currentPlayer: 'ai' });
-          
-          setTimeout(() => {
-            const store = get();
-            if (store.currentPlayer === 'ai' && store.phase === 'pegging') {
-              const nextCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
-              if (nextCard) {
-                store.playCard(nextCard);
-              }
-            }
-          }, 1000);
-        }
-      }
     }
+    
+
+    // const awardLastPlayerPoints = () => {
+    //   const lastPlayer = pegging.lastPlayedBy;
+    //   if (lastPlayer && pegging.total > 0) {
+    //     const points = pegging.total === 31 ? 2 : 1;
+    //     const newState = {
+    //       ...get(),
+    //       scores: {
+    //         ...get().scores,
+    //         [lastPlayer]: get().scores[lastPlayer] + points,
+    //       },
+    //       pegging: {
+    //         cards: [],
+    //         total: 0,
+    //         lastPlayedBy: null,
+    //       },
+    //     };
+    //     set(newState);
+    //     saveGameState(newState);
+    //   }
+    // };
+
+    // if (currentPlayer === 'user') {
+    //   const newTotal = getCardValue(card.rank) + pegging.total;
+    //   if (newTotal > 31) return;
+
+    //   const updatedPegging = {
+    //     cards: [...pegging.cards, card],
+    //     total: newTotal,
+    //     lastPlayedBy: currentPlayer,
+    //   };
+
+    //   const updatedPlayerHand = playerHand.filter(
+    //     c => c.rank !== card.rank || c.suit !== card.suit
+    //   );
+
+    //   const newState = {
+    //     ...get(),
+    //     playerHand: updatedPlayerHand,
+    //     pegging: updatedPegging,
+    //     currentPlayer: 'ai',
+    //     originalPlayerHand,
+    //     originalAIHand,
+    //   };
+
+    //   set(newState);
+    //   saveGameState(newState);
+
+    //   const points = calculatePeggingPoints(updatedPegging.cards);
+    //   if (points > 0) {
+    //     const stateWithPoints = {
+    //       ...newState,
+    //       scores: {
+    //         ...newState.scores,
+    //         user: newState.scores.user + points,
+    //       },
+    //     };
+    //     set(stateWithPoints);
+    //     saveGameState(stateWithPoints);
+
+    //     if (updatedPlayerHand.length === 0 && aiHand.length === 0) {
+    //       const finalState = {
+    //         ...stateWithPoints,
+    //         phase: 'counting' as GamePhase,
+    //       };
+    //       set(finalState);
+    //       saveGameState(finalState);
+    //       setTimeout(() => get().startScoring(), 1000);
+    //       return;
+    //     }
+    //   } else {
+    //     if (updatedPlayerHand.length === 0 && aiHand.length === 0) {
+    //       const finalState = {
+    //         ...newState,
+    //         phase: 'counting' as GamePhase,
+    //       };
+    //       set(finalState);
+    //       saveGameState(finalState);
+    //       setTimeout(() => get().startScoring(), 1000);
+    //       return;
+    //     }
+    //   }
+
+    //   setTimeout(() => {
+    //     const store = get();
+    //     if (store.currentPlayer === 'ai' && store.phase === 'pegging') {
+    //       const aiCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
+    //       if (aiCard) {
+    //         store.playCard(aiCard, 'ai');
+    //       } else {
+    //         if (!canPlay(store.playerHand)) {
+    //           awardLastPlayerPoints();
+    //         }
+    //         set({ ...store, currentPlayer: 'user' });
+    //         saveGameState({ ...store, currentPlayer: 'user' });
+    //       }
+    //     }
+    //   }, 1000);
+
+    // } else {
+    //   const newTotal = getCardValue(card.rank) + pegging.total;
+    //   if (newTotal > 31) return;
+
+    //   const updatedPegging = {
+    //     cards: [...pegging.cards, card],
+    //     total: newTotal,
+    //     lastPlayedBy: currentPlayer,
+    //   };
+
+    //   const updatedAIHand = aiHand.filter(
+    //     c => c.rank !== card.rank || c.suit !== card.suit
+    //   );
+
+    //   const newState = {
+    //     ...get(),
+    //     aiHand: updatedAIHand,
+    //     pegging: updatedPegging,
+    //     currentPlayer: 'user',
+    //     originalPlayerHand,
+    //     originalAIHand,
+    //   };
+
+    //   set(newState);
+    //   saveGameState(newState);
+
+    //   const points = calculatePeggingPoints(updatedPegging.cards);
+    //   if (points > 0) {
+    //     const stateWithPoints = {
+    //       ...newState,
+    //       scores: {
+    //         ...newState.scores,
+    //         ai: newState.scores.ai + points,
+    //       },
+    //     };
+    //     set(stateWithPoints);
+    //     saveGameState(stateWithPoints);
+
+    //     if (updatedAIHand.length === 0 && playerHand.length === 0) {
+    //       const finalState = {
+    //         ...stateWithPoints,
+    //         phase: 'counting' as GamePhase,
+    //       };
+    //       set(finalState);
+    //       saveGameState(finalState);
+    //       setTimeout(() => get().startScoring(), 1000);
+    //       return;
+    //     }
+    //   } else {
+    //     if (updatedAIHand.length === 0 && playerHand.length === 0) {
+    //       const finalState = {
+    //         ...newState,
+    //         phase: 'counting' as GamePhase,
+    //       };
+    //       set(finalState);
+    //       saveGameState(finalState);
+    //       setTimeout(() => get().startScoring(), 1000);
+    //       return;
+    //     }
+    //   }
+
+    //   if (!canPlay(playerHand)) {
+    //     const aiCanPlay = canPlay(updatedAIHand);
+    //     if (!aiCanPlay) {
+    //       awardLastPlayerPoints();
+    //     } else {
+    //       set({ ...newState, currentPlayer: 'ai' });
+    //       saveGameState({ ...newState, currentPlayer: 'ai' });
+          
+    //       setTimeout(() => {
+    //         const store = get();
+    //         if (store.currentPlayer === 'ai' && store.phase === 'pegging') {
+    //           const nextCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
+    //           if (nextCard) {
+    //             store.playCard(nextCard, 'ai');
+    //           }
+    //         }
+    //       }, 1000);
+    //     }
+    //   }
+    // }
   },
 
   startScoring: () => {
@@ -674,4 +795,29 @@ function isConsecutive(numbers: number[]): boolean {
     if (numbers[i] !== numbers[i - 1] + 1) return false;
   }
   return true;
+}
+
+function getPeggingPointsForRun(cards: Card[]): number {
+  for (let i = cards.length; i > 2; i--) {
+    const lastCards = cards.slice(-i);
+    const ranks = lastCards.map(card => RANKS.indexOf(card.rank)).sort((a, b) => a - b);
+    if (isConsecutive(ranks)) {
+      return i;
+    }
+  }
+  return 0;
+}
+
+function getPeggingPointsForPair(cards: Card[]): number {
+  let lastRank = cards[cards.length - 1].rank;
+  if (cards.length > 1 && cards[cards.length - 2].rank === lastRank) {
+    if (cards.length > 2 && cards[cards.length - 3].rank === lastRank) {
+      if (cards.length > 3 && cards[cards.length - 4].rank === lastRank) {
+        return 12;
+      }
+      return 6;
+    }
+    return 2;
+  }
+  return 0;
 }
