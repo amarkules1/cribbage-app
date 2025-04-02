@@ -1,7 +1,8 @@
 - [x] Fix "AI Thinking" bug
 - [x] Fix draw for dealer popup
 - [x] move hand score popup down
-- [ ] make ure crib shows during crib scoring
+- [x] make sure crib shows during crib scoring
+- [ ] fix first turn after pass logic
 - [ ] add pauses where needed
 - [ ] Scroll pegging to show last played cards
 - [ ] Fix scoring during pegging

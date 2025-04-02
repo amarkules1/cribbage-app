@@ -73,7 +73,7 @@ export function GameBoard() {
         <View style={styles.topSection}>
           <Text style={styles.phaseText}>COUNTING</Text>
           <ScoreBoard userScore={scores.user} aiScore={scores.ai} />
-          <Hand cards={originalAIHand} />
+          <Hand cards={(dealer != 'user' && scoringMessage.includes('crib')) ? crib : originalAIHand} />
           {starter && (
             <View style={styles.starterContainer}>
               <Text style={styles.label}>Starter</Text>
@@ -94,7 +94,7 @@ export function GameBoard() {
         </View>
 
         <View style={styles.bottomSection}>
-          <Hand cards={originalPlayerHand} disabled />
+          <Hand cards={(dealer === 'user' && scoringMessage.includes('crib')) ? crib : originalPlayerHand} disabled />
         </View>
       </View>
     );
