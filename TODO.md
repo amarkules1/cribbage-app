@@ -3,17 +3,19 @@
 - [x] move hand score popup down
 - [x] make sure crib shows during crib scoring
 - [x] fix first turn after pass logic
-- [ ] add pauses where needed
+- [x] add pauses where needed - v1.0 - after last card is played by AI
 - [x] Scroll pegging to show last played cards
 - [x] Fix scoring during pegging
-- [ ] Fix scoring during hand scoring
-- [ ] add function for determining best discard
-- [ ] incorporate best discard into AI
-- [ ] add help dialog that tells player what to discard
-- [ ] add theme settings - light vs dark mode, card and accent color options
-- [ ] add point scoring messages during pegging
-- [ ] add points explanation during hand scoring
-- [ ] improve AI pegging logic
-- [ ] add AI difficulty setting
-- [ ] add ad banner and analytics
-- [ ] publish to app store
+- [ ] Make sure last point is always awarded - v1.0
+- [ ] Fix scoring during hand scoring - v1.0
+- [ ] add function for determining best discard - v1.1
+- [ ] incorporate best discard into AI - v1.1
+- [ ] add help dialog that tells player what to discard - v1.1
+- [ ] add theme settings - light vs dark mode, card and accent color options - v1.1
+- [ ] add point scoring messages during pegging - v1.1
+- [ ] add points explanation during hand scoring - v1.1
+- [ ] improve AI pegging logic - v1.1
+- [ ] add AI difficulty setting - v1.1
+- [ ] convert to ios build compatible - v1.0
+- [ ] add ad banner and analytics - v1.0
+- [ ] publish to app store - v1.0

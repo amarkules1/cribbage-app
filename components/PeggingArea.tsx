@@ -10,7 +10,7 @@ interface PeggingAreaProps {
 }
 
 export function PeggingArea({ cards, total, currentPlayer }: PeggingAreaProps) {
-  const { playerHand, canPlay, pass } = useGameStore();
+  const { playerHand, canPlay, pass, lastPeggingActionMessage } = useGameStore();
   const showPassButton = currentPlayer === 'user' && !canPlay(playerHand);
 
   return (
@@ -23,6 +23,10 @@ export function PeggingArea({ cards, total, currentPlayer }: PeggingAreaProps) {
       <View style={styles.playedCards}>
         <Text style={styles.label}>Played Cards</Text>
         <Hand cards={cards} disabled />
+      </View>
+
+      <View style={styles.lastPointContainer}>
+        {lastPeggingActionMessage && <Text style={styles.label}>{lastPeggingActionMessage}</Text>}
       </View>
 
       {showPassButton ? (
@@ -49,6 +53,9 @@ const styles = StyleSheet.create({
     maxWidth: 300,
   },
   countContainer: {
+    alignItems: 'center',
+  },
+  lastPointContainer: {
     alignItems: 'center',
   },
   count: {

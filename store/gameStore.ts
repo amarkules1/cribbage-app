@@ -37,6 +37,7 @@ interface GameStore extends GameState {
   acknowledgeScore: () => void;
   startScoring: () => void;
   startDealing: () => void;
+  lastPeggingActionMessage: string | null;
 }
 
 const INITIAL_STATE: GameState = {
@@ -50,6 +51,7 @@ const INITIAL_STATE: GameState = {
   starter: null,
   currentPlayer: 'user',
   dealer: null,
+  lastPeggingActionMessage: null,
   dealerSelection: {
     userCard: null,
     aiCard: null,
@@ -334,8 +336,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // check if we're in pegging phase
     if (phase !== 'pegging') return;
-    // check if it's the player's turn
-    if (player !== currentPlayer) return;
     // check if the card can be played
     if (!get().canPlay([card])) return;
     // add card to count
@@ -363,13 +363,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // determine if any points should be awarded
     if (peggingTotal === 31) {
       pointsToAward = 2;
-      pointsReason = '31';
+      pointsReason = '31 for 2';
     } else if (peggingTotal === 15) {
-      pointsToAward = 1;
-      pointsReason = '15';
+      pointsToAward = 2;
+      pointsReason = '15 for 2';
     } else if (!get().canPlay(playerHand) && !get().canPlay(aiHand)) {
       pointsToAward = 1;
-      pointsReason = (playerHand.length === 0 && aiHand.length === 0) ? 'Last card' : 'Go';
+      pointsReason = (playerHand.length === 0 && aiHand.length === 0) ? 'Last card for 1' : 'Go for 1';
     }
     const pointsForRun = getPeggingPointsForRun(newPeggingCards);
     if (pointsForRun > 0) {
@@ -380,14 +380,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (pointsForPair > 0) {
       pointsToAward += pointsForPair;
       if (pointsForPair === 2) {
-        pointsReason = pointsReason ? pointsReason + ', Pair' : 'Pair';
+        pointsReason = pointsReason ? pointsReason + ', Pair for 2' : 'Pair for 2';
       } else if (pointsForPair === 6) {
-        pointsReason = pointsReason ? pointsReason + ', Three of a Kind' : 'Three of a Kind';
+        pointsReason = pointsReason ? pointsReason + ', Three of a Kind for 6' : 'Three of a Kind for 6';
       } else if (pointsForPair === 12) {
-        pointsReason = pointsReason ? pointsReason + ', Four of a Kind' : 'Four of a Kind';
+        pointsReason = pointsReason ? pointsReason + ', Four of a Kind for 12' : 'Four of a Kind for 12';
       }
     }
-    // update points, and turn
+    // update points and turn
     const newState = {
       ...get(),
       playerHand: newPlayerHand,
@@ -404,13 +404,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
     saveGameState(newState);
 
     if (newPlayerHand.length === 0 && newAIHand.length === 0) {
+      
       const newState = {
         ...get(),
         phase: 'counting' as GamePhase,
       };
-      set(newState);
-      saveGameState(newState);
-      setTimeout(() => get().startScoring(), 1000);
+      setTimeout(() => {
+        set(newState);
+        saveGameState(newState);
+        get().startScoring();
+      }, 2000);
       return;
     }
 
@@ -419,7 +422,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const storage = get();
       setTimeout(() => {
         const nextCard = selectAIPegCard(aiHand, pegging.cards, pegging.total, difficulty);
-        if (nextCard) {
+        if (nextCard && storage.canPlay([nextCard])) {
           storage.playCard(nextCard, 'ai');
         } else {
           const lastPlayer = storage.pegging.lastPlayedBy;
@@ -438,187 +441,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }, 1000);
     }
-    
-
-    // const awardLastPlayerPoints = () => {
-    //   const lastPlayer = pegging.lastPlayedBy;
-    //   if (lastPlayer && pegging.total > 0) {
-    //     const points = pegging.total === 31 ? 2 : 1;
-    //     const newState = {
-    //       ...get(),
-    //       scores: {
-    //         ...get().scores,
-    //         [lastPlayer]: get().scores[lastPlayer] + points,
-    //       },
-    //       pegging: {
-    //         cards: [],
-    //         total: 0,
-    //         lastPlayedBy: null,
-    //       },
-    //     };
-    //     set(newState);
-    //     saveGameState(newState);
-    //   }
-    // };
-
-    // if (currentPlayer === 'user') {
-    //   const newTotal = getCardValue(card.rank) + pegging.total;
-    //   if (newTotal > 31) return;
-
-    //   const updatedPegging = {
-    //     cards: [...pegging.cards, card],
-    //     total: newTotal,
-    //     lastPlayedBy: currentPlayer,
-    //   };
-
-    //   const updatedPlayerHand = playerHand.filter(
-    //     c => c.rank !== card.rank || c.suit !== card.suit
-    //   );
-
-    //   const newState = {
-    //     ...get(),
-    //     playerHand: updatedPlayerHand,
-    //     pegging: updatedPegging,
-    //     currentPlayer: 'ai',
-    //     originalPlayerHand,
-    //     originalAIHand,
-    //   };
-
-    //   set(newState);
-    //   saveGameState(newState);
-
-    //   const points = calculatePeggingPoints(updatedPegging.cards);
-    //   if (points > 0) {
-    //     const stateWithPoints = {
-    //       ...newState,
-    //       scores: {
-    //         ...newState.scores,
-    //         user: newState.scores.user + points,
-    //       },
-    //     };
-    //     set(stateWithPoints);
-    //     saveGameState(stateWithPoints);
-
-    //     if (updatedPlayerHand.length === 0 && aiHand.length === 0) {
-    //       const finalState = {
-    //         ...stateWithPoints,
-    //         phase: 'counting' as GamePhase,
-    //       };
-    //       set(finalState);
-    //       saveGameState(finalState);
-    //       setTimeout(() => get().startScoring(), 1000);
-    //       return;
-    //     }
-    //   } else {
-    //     if (updatedPlayerHand.length === 0 && aiHand.length === 0) {
-    //       const finalState = {
-    //         ...newState,
-    //         phase: 'counting' as GamePhase,
-    //       };
-    //       set(finalState);
-    //       saveGameState(finalState);
-    //       setTimeout(() => get().startScoring(), 1000);
-    //       return;
-    //     }
-    //   }
-
-    //   setTimeout(() => {
-    //     const store = get();
-    //     if (store.currentPlayer === 'ai' && store.phase === 'pegging') {
-    //       const aiCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
-    //       if (aiCard) {
-    //         store.playCard(aiCard, 'ai');
-    //       } else {
-    //         if (!canPlay(store.playerHand)) {
-    //           awardLastPlayerPoints();
-    //         }
-    //         set({ ...store, currentPlayer: 'user' });
-    //         saveGameState({ ...store, currentPlayer: 'user' });
-    //       }
-    //     }
-    //   }, 1000);
-
-    // } else {
-    //   const newTotal = getCardValue(card.rank) + pegging.total;
-    //   if (newTotal > 31) return;
-
-    //   const updatedPegging = {
-    //     cards: [...pegging.cards, card],
-    //     total: newTotal,
-    //     lastPlayedBy: currentPlayer,
-    //   };
-
-    //   const updatedAIHand = aiHand.filter(
-    //     c => c.rank !== card.rank || c.suit !== card.suit
-    //   );
-
-    //   const newState = {
-    //     ...get(),
-    //     aiHand: updatedAIHand,
-    //     pegging: updatedPegging,
-    //     currentPlayer: 'user',
-    //     originalPlayerHand,
-    //     originalAIHand,
-    //   };
-
-    //   set(newState);
-    //   saveGameState(newState);
-
-    //   const points = calculatePeggingPoints(updatedPegging.cards);
-    //   if (points > 0) {
-    //     const stateWithPoints = {
-    //       ...newState,
-    //       scores: {
-    //         ...newState.scores,
-    //         ai: newState.scores.ai + points,
-    //       },
-    //     };
-    //     set(stateWithPoints);
-    //     saveGameState(stateWithPoints);
-
-    //     if (updatedAIHand.length === 0 && playerHand.length === 0) {
-    //       const finalState = {
-    //         ...stateWithPoints,
-    //         phase: 'counting' as GamePhase,
-    //       };
-    //       set(finalState);
-    //       saveGameState(finalState);
-    //       setTimeout(() => get().startScoring(), 1000);
-    //       return;
-    //     }
-    //   } else {
-    //     if (updatedAIHand.length === 0 && playerHand.length === 0) {
-    //       const finalState = {
-    //         ...newState,
-    //         phase: 'counting' as GamePhase,
-    //       };
-    //       set(finalState);
-    //       saveGameState(finalState);
-    //       setTimeout(() => get().startScoring(), 1000);
-    //       return;
-    //     }
-    //   }
-
-    //   if (!canPlay(playerHand)) {
-    //     const aiCanPlay = canPlay(updatedAIHand);
-    //     if (!aiCanPlay) {
-    //       awardLastPlayerPoints();
-    //     } else {
-    //       set({ ...newState, currentPlayer: 'ai' });
-    //       saveGameState({ ...newState, currentPlayer: 'ai' });
-          
-    //       setTimeout(() => {
-    //         const store = get();
-    //         if (store.currentPlayer === 'ai' && store.phase === 'pegging') {
-    //           const nextCard = selectAIPegCard(store.aiHand, store.pegging.cards, store.pegging.total, store.difficulty);
-    //           if (nextCard) {
-    //             store.playCard(nextCard, 'ai');
-    //           }
-    //         }
-    //       }, 1000);
-    //     }
-    //   }
-    // }
   },
 
   startScoring: () => {

@@ -49,6 +49,7 @@ export interface GameState {
   winner: Player | null;
   scoringMessage: string | null;
   waitingForAcknowledgement: boolean;
+  lastPeggingActionMessage: string | null;
 }
 
 export type Difficulty = 'easy' | 'medium' | 'hard';

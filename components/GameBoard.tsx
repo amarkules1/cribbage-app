@@ -118,14 +118,14 @@ export function GameBoard() {
             </View>
           ) : (
             <>
+
+            <View style={styles.cardReveal}>
+              <Text style={styles.label}>AI drew:</Text>
+              <Hand cards={[dealerSelection.aiCard!]} disabled />
+            </View>
               <View style={styles.cardReveal}>
                 <Text style={styles.label}>You drew:</Text>
                 <Hand cards={[dealerSelection.userCard]} disabled />
-              </View>
-
-              <View style={styles.cardReveal}>
-                <Text style={styles.label}>AI drew:</Text>
-                <Hand cards={[dealerSelection.aiCard!]} disabled />
               </View>
 
               <View style={styles.resultMessage}>
