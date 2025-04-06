@@ -6,7 +6,10 @@
 - [x] add pauses where needed - v1.0 - after last card is played by AI
 - [x] Scroll pegging to show last played cards
 - [x] Fix scoring during pegging
-- [ ] Make sure last point is always awarded - v1.0
+- [x] Make sure last point is always awarded - v1.0
+- [ ] award the last point at the appropriate time - v1.0
+- [ ] Points shouldn't go past 121 - v1.0
+- [ ] game should stop when 121 is reached regardless of phase - v1.0
 - [ ] Fix scoring during hand scoring - v1.0
 - [ ] add function for determining best discard - v1.1
 - [ ] incorporate best discard into AI - v1.1

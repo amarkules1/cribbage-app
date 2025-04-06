@@ -40,23 +40,29 @@ export function getCardValue(rank: Rank): number {
 }
 
 export function calculateFifteens(cards: Card[]): number {
-  let count = 0;
-  
-  function findFifteens(remaining: Card[], sum: number, start: number) {
-    if (sum === 15) {
-      count++;
-      return;
-    }
-    if (sum > 15) return;
-    
-    for (let i = start; i < remaining.length; i++) {
-      findFifteens(remaining, sum + remaining[i].value, i + 1);
+  let combos = enumerateCardCombinations(cards);
+  return combos.filter(combo => combo.reduce((acc, card) => acc + card.value, 0) === 15).length * 2;
+}
+
+export function enumerateCardCombinations(cards: Card[]): Card[][] {
+  const combinations: Card[][] = [];
+  cards = cards.sort((a, b) => RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank));
+  for (let i = 0; i < cards.length; i++){
+    if (combinations.length === 0) {
+      combinations.push([]);
+      combinations.push([cards[i]]);
+    } else {
+      const currLen = combinations.length;
+      for (let j = 0; j < currLen; j++) {
+        combinations.push([...combinations[j], cards[i]]);
+      }
     }
   }
-  
-  findFifteens(cards, 0, 0);
-  return count * 2;
+
+  return combinations;
 }
+  
+
 
 export function calculatePairs(cards: Card[]): number {
   let pairs = 0;
@@ -71,27 +77,24 @@ export function calculatePairs(cards: Card[]): number {
 }
 
 export function calculateRuns(cards: Card[]): number {
-  const values = cards.map(card => RANKS.indexOf(card.rank)).sort((a, b) => a - b);
-  let maxRun = 0;
-  
-  for (let i = 0; i < values.length; i++) {
-    let currentRun = 1;
-    for (let j = i + 1; j < values.length; j++) {
-      if (values[j] === values[j - 1] + 1) {
-        currentRun++;
-      } else {
-        break;
-      }
+  let combos = enumerateCardCombinations(cards);
+  let total = 0;
+  for (let combo of combos) {
+    if (combo.length >= 3 && isConsecutive(combo.map(card => RANKS.indexOf(card.rank)))) {
+      total += combo.length;
     }
-    maxRun = Math.max(maxRun, currentRun);
   }
-  
-  return maxRun >= 3 ? maxRun : 0;
+  return total;
 }
 
-export function calculateFlush(cards: Card[]): number {
-  const suits = new Set(cards.map(card => card.suit));
-  return suits.size === 1 ? cards.length : 0;
+export function calculateFlush(cards: Card[], starter: Card | null): number {
+  if (cards.reduce(card => card.suit === cards[0].suit, true)) {
+    if (starter && starter.suit === cards[0].suit) {
+      return 5;
+    }
+    return 4;
+  }
+  return 0;
 }
 
 export function calculateNobs(hand: Card[], starter: Card): number {
@@ -112,4 +115,11 @@ export function calculateHandScore(hand: Card[], starter: Card | null): HandScor
   
   score.total = score.fifteens + score.pairs + score.runs + score.flushes + score.nobs;
   return score;
+}
+
+export function isConsecutive(numbers: number[]): boolean {
+  for (let i = 1; i < numbers.length; i++) {
+    if (numbers[i] !== numbers[i - 1] + 1) return false;
+  }
+  return true;
 }

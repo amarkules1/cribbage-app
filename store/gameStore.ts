@@ -12,6 +12,7 @@ import {
   GameSettings,
 } from '@/utils/storage';
 import type { GameState, Card, Player, GamePhase, Difficulty, HandScore } from '@/types/game';
+import { isConsecutive } from '@/utils/cards';
 
 interface GameStore extends GameState {
   difficulty: Difficulty;
@@ -31,7 +32,7 @@ interface GameStore extends GameState {
   stats: GameStats;
   updateStats: (stats: Partial<GameStats>) => void;
   hasGameInProgress: () => boolean;
-  canPlay: (hand: Card[]) => boolean;
+  canPlay: (hand: Card[], total: number) => boolean;
   scoreHand: (player: Player) => void;
   scoreCrib: () => void;
   acknowledgeScore: () => void;
@@ -98,7 +99,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     return phase !== 'selecting-dealer' && !isGameOver;
   },
 
-  canPlay: (hand: Card[]) => {
+  canPlay: (hand: Card[], total: number) => {
     const { pegging } = get();
     return hand.some(card => getCardValue(card.rank) + pegging.total <= 31);
   },
@@ -306,7 +307,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
                   const newState = {
                     ...storage,
                     lastPeggingActionMessage: 'AI passed',
-                    currentPlayer: lastPlayer === 'user' ? 'ai' : 'user',
+                    currentPlayer: 'user',
                   };
                   set(newState);
                   saveGameState(newState);
@@ -337,7 +338,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // check if we're in pegging phase
     if (phase !== 'pegging') return;
     // check if the card can be played
-    if (!get().canPlay([card])) return;
+    if (!get().canPlay([card], pegging.total)) return;
     // add card to count
     let peggingTotal = pegging.total + getCardValue(card.rank);
     let newPeggingCards = [...pegging.cards, card];
@@ -367,9 +368,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } else if (peggingTotal === 15) {
       pointsToAward = 2;
       pointsReason = '15 for 2';
-    } else if (!get().canPlay(playerHand) && !get().canPlay(aiHand)) {
+    } else if (!get().canPlay(newPlayerHand, peggingTotal) && !get().canPlay(newAIHand, peggingTotal)) {
       pointsToAward = 1;
-      pointsReason = (playerHand.length === 0 && aiHand.length === 0) ? 'Last card for 1' : 'Go for 1';
+      pointsReason = (newPlayerHand.length === 0 && newAIHand.length === 0) ? 'Last card for 1' : 'Go for 1';
     }
     const pointsForRun = getPeggingPointsForRun(newPeggingCards);
     if (pointsForRun > 0) {
@@ -612,12 +613,6 @@ function calculatePeggingPoints(cards: Card[]): number {
   return points;
 }
 
-function isConsecutive(numbers: number[]): boolean {
-  for (let i = 1; i < numbers.length; i++) {
-    if (numbers[i] !== numbers[i - 1] + 1) return false;
-  }
-  return true;
-}
 
 function getPeggingPointsForRun(cards: Card[]): number {
   for (let i = cards.length; i > 2; i--) {
