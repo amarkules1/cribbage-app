@@ -7,7 +7,7 @@
 - [x] Scroll pegging to show last played cards
 - [x] Fix scoring during pegging
 - [x] Make sure last point is always awarded - v1.0
-- [ ] award the last point at the appropriate time - v1.0
+- [x] award the last point at the appropriate time - v1.0
 - [ ] Points shouldn't go past 121 - v1.0
 - [ ] game should stop when 121 is reached regardless of phase - v1.0
 - [ ] Fix scoring during hand scoring - v1.0

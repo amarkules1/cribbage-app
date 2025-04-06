@@ -39,6 +39,7 @@ interface GameStore extends GameState {
   startScoring: () => void;
   startDealing: () => void;
   lastPeggingActionMessage: string | null;
+  updateScore: (player: Player, points: number) => void;
 }
 
 const INITIAL_STATE: GameState = {
@@ -241,15 +242,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const additionalPoints = starter.rank === 'J' ? 2 : 0;
     const scoringPlayer = dealer;
+    get().updateScore(scoringPlayer, additionalPoints);
     
     const newState = {
       ...get(),
       starter,
       phase: 'pegging' as GamePhase,
-      scores: {
-        ...get().scores,
-        [scoringPlayer]: get().scores[scoringPlayer] + additionalPoints,
-      },
       currentPlayer: dealer === 'user' ? 'ai' : 'user',
     };
 
@@ -293,13 +291,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
               },
               currentPlayer: lastPlayer === 'user' ? 'ai' : 'user',
               lastPeggingActionMessage: pointsMessage,
-              scores: {
-                ...store.scores,
-                [lastPlayer]: store.scores[lastPlayer] + pointsToAward,
-              },
             };
             set(newState);
             saveGameState(newState);
+            get().updateScore(lastPlayer, pointsToAward);
           }
           if (get().currentPlayer === 'ai') {
             const storage = get();
@@ -388,16 +383,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
         pointsReason = pointsReason ? pointsReason + ', Four of a Kind for 12' : 'Four of a Kind for 12';
       }
     }
+    get().updateScore(player, pointsToAward);
     // update points and turn
     const newState = {
       ...get(),
       playerHand: newPlayerHand,
       aiHand: newAIHand,
       currentPlayer: newCurrentPlayer,
-      scores: {
-        ...get().scores,
-        [player]: get().scores[player] + pointsToAward,
-      },
       lastPeggingActionMessage: pointsReason,
 
     };
@@ -408,6 +400,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (player && peggingTotal > 0) {
         const pointsToAward = peggingTotal === 31 ? 2 : 1;
         const pointsMessage = player + " scores " + pointsToAward + " points for " + (peggingTotal === 31 ? '31' : 'Go');
+        get().updateScore(player, pointsToAward);
         const newState = {
           ...get(),
           pegging: {
@@ -415,10 +408,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
           },
           currentPlayer: player === 'user' ? 'ai' : 'user',
           lastPeggingActionMessage: player === 'user' ? 'You passed' : 'AI passed, ' + pointsMessage,
-          scores: {
-            ...get().scores,
-            [player]: get().scores[player] + pointsToAward,
-          },
         };
         set(newState);
         saveGameState(newState);
@@ -462,6 +451,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
+  updateScore: (player, points) => {
+    const { scores, phase } = get();
+    let newScore = scores[player] + points;
+    newScore = newScore < 121 ? newScore : 121;
+    let isGameOver = newScore >= 121;
+    let winner = null;
+    let newPhase = phase;
+    if (isGameOver) {
+      winner = player;
+      newPhase = 'gameOver' as GamePhase;
+    }
+    const newScores = { ...scores, [player]: newScore };
+    set({ scores: newScores, winner, phase: newPhase, isGameOver: isGameOver });
+    saveGameState({ scores: newScores, winner, phase: newPhase, isGameOver: isGameOver });
+  },
+
   startScoring: () => {
     const { dealer } = get();
     const firstPlayer = dealer === 'user' ? 'ai' : 'user';
@@ -474,13 +479,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const score = calculateHandScore(hand, starter);
     
     const message = `${player === 'user' ? 'Your' : "AI's"} hand scores ${score.total} points`;
+    get().updateScore(player, score.total);
     
     const newState = {
       ...get(),
-      scores: {
-        ...get().scores,
-        [player]: get().scores[player] + score.total,
-      },
       scoringMessage: message,
       waitingForAcknowledgement: true,
     };
@@ -568,13 +570,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const score = calculateHandScore(crib, starter);
     
     const message = `${dealer === 'user' ? 'Your' : "AI's"} crib scores ${score.total} points`;
+    get().updateScore(dealer, score.total);
     
     const newState = {
       ...get(),
-      scores: {
-        ...get().scores,
-        [dealer]: get().scores[dealer] + score.total,
-      },
       scoringMessage: message,
       waitingForAcknowledgement: true,
     };
