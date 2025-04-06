@@ -282,6 +282,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         } else {
           const lastPlayer = store.pegging.lastPlayedBy;
           if (lastPlayer && store.pegging.total > 0) {
+            const pointsToAward = store.pegging.total === 31 ? 2 : 1;
+            const pointsMessage = lastPlayer + " scores " + pointsToAward + " points for " + (store.pegging.total === 31 ? '31' : 'Go');
             const newState = {
               ...store,
               pegging: {
@@ -290,7 +292,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 lastPlayedBy: null,
               },
               currentPlayer: lastPlayer === 'user' ? 'ai' : 'user',
-              lastPeggingActionMessage: lastPlayer === 'user' ? 'You passed' : 'AI passed',
+              lastPeggingActionMessage: pointsMessage,
+              scores: {
+                ...store.scores,
+                [lastPlayer]: store.scores[lastPlayer] + pointsToAward,
+              },
             };
             set(newState);
             saveGameState(newState);
@@ -362,15 +368,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set(newState1);
     saveGameState(newState1);
     // determine if any points should be awarded
-    if (peggingTotal === 31) {
-      pointsToAward = 2;
-      pointsReason = '31 for 2';
-    } else if (peggingTotal === 15) {
+    if (peggingTotal === 15) {
       pointsToAward = 2;
       pointsReason = '15 for 2';
-    } else if (!get().canPlay(newPlayerHand, peggingTotal) && !get().canPlay(newAIHand, peggingTotal)) {
-      pointsToAward = 1;
-      pointsReason = (newPlayerHand.length === 0 && newAIHand.length === 0) ? 'Last card for 1' : 'Go for 1';
     }
     const pointsForRun = getPeggingPointsForRun(newPeggingCards);
     if (pointsForRun > 0) {
@@ -405,6 +405,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
     saveGameState(newState);
 
     if (newPlayerHand.length === 0 && newAIHand.length === 0) {
+      if (player && peggingTotal > 0) {
+        const pointsToAward = peggingTotal === 31 ? 2 : 1;
+        const pointsMessage = player + " scores " + pointsToAward + " points for " + (peggingTotal === 31 ? '31' : 'Go');
+        const newState = {
+          ...get(),
+          pegging: {
+            lastPlayedBy: null,
+          },
+          currentPlayer: player === 'user' ? 'ai' : 'user',
+          lastPeggingActionMessage: player === 'user' ? 'You passed' : 'AI passed, ' + pointsMessage,
+          scores: {
+            ...get().scores,
+            [player]: get().scores[player] + pointsToAward,
+          },
+        };
+        set(newState);
+        saveGameState(newState);
+      }
       
       const newState = {
         ...get(),

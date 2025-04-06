@@ -14,6 +14,7 @@ interface HandProps {
 export function Hand({ cards, faceDown, selectedCards = [], onCardPress, disabled }: HandProps) {
   const scrollRef = useRef<ScrollView>(null);
   // keep scrolled to last card by default
+  cards = cards ? cards : [];
     
   return (
     <ScrollView 
