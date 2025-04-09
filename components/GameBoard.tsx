@@ -6,6 +6,7 @@ import { useGameStore } from '@/store/gameStore';
 import type { Card as CardType } from '@/types/game';
 import { useState } from 'react';
 import { Scissors } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export function GameBoard() {
   const {
@@ -23,13 +24,18 @@ export function GameBoard() {
     pegging,
     scoringMessage,
     waitingForAcknowledgement,
+    isGameOver,
+    winner,
     playCard,
     drawForDealer,
     discardToCrib,
     cutDeck,
     acknowledgeScore,
     startDealing,
+    startNewGame,
   } = useGameStore();
+  
+  const router = useRouter();
 
   const [selectedCards, setSelectedCards] = useState<CardType[]>([]);
   const isPeggingPhase = phase === 'pegging';
@@ -66,6 +72,39 @@ export function GameBoard() {
       ? "You drew the lowest card and will deal first!"
       : "AI drew the lowest card and will deal first!";
   };
+
+  if (isGameOver) {
+    const winnerScore = scores[winner === 'user' ? 'user' : 'ai'];
+    const loserScore = scores[winner === 'user' ? 'ai' : 'user'];
+    const isSkunked = loserScore < 90;
+    const message = winner === 'user' 
+      ? isSkunked 
+        ? `You skunked the AI ${winnerScore}-${loserScore}!` 
+        : `You beat the AI ${winnerScore}-${loserScore}!`
+      : isSkunked
+        ? `The AI skunked you ${winnerScore}-${loserScore}!`
+        : `The AI beat you ${winnerScore}-${loserScore}!`;
+
+    return (
+      <View style={styles.container}>
+        <View style={styles.dealerSelection}>
+          <View style={[styles.message, styles.gameOverMessage]}>
+            <Text style={[styles.messageText, styles.gameOverText]}>{message}</Text>
+            <View style={styles.gameOverButtons}>
+              <Pressable style={styles.button} onPress={startNewGame}>
+                <Text style={styles.buttonText}>New Game</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.button, styles.secondaryButton]} 
+                onPress={() => router.push('/')}>
+                <Text style={styles.buttonText}>Home</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </View>
+    );
+  }
 
   if (isCountingPhase && scoringMessage) {
     return (
@@ -246,6 +285,21 @@ export function GameBoard() {
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
 
 const styles = StyleSheet.create({
+  gameOverMessage: {
+    backgroundColor: '#1e40af',
+    padding: 32,
+  },
+  gameOverText: {
+    fontSize: 24,
+    marginBottom: 16,
+  },
+  gameOverButtons: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  secondaryButton: {
+    backgroundColor: '#4b5563',
+  },
   container: {
     flex: 1,
     backgroundColor: '#121212',

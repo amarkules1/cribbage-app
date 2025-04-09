@@ -95,13 +95,12 @@ export function calculateRuns(cards: Card[]): number {
 }
 
 export function calculateFlush(cards: Card[], starter: Card | null): number {
-  if (cards.reduce(card => card.suit === cards[0].suit, true)) {
-    if (starter && starter.suit === cards[0].suit) {
-      return 5;
-    }
-    return 4;
+  let suit = cards[0].suit;
+  for (let card of cards) {
+    if (card.suit !== suit) return 0;
   }
-  return 0;
+  if (starter && starter.suit == suit) return 5;
+  return 4;
 }
 
 export function calculateNobs(hand: Card[], starter: Card): number {
@@ -115,7 +114,7 @@ export function calculateHandScore(hand: Card[], starter: Card | null): HandScor
     fifteens: calculateFifteens(allCards),
     pairs: calculatePairs(allCards),
     runs: calculateRuns(allCards),
-    flushes: calculateFlush(hand) >= 4 ? 4 : 0,
+    flushes: calculateFlush(hand, starter) >= 4 ? 4 : 0,
     nobs: starter ? calculateNobs(hand, starter) : 0,
     total: 0,
   };

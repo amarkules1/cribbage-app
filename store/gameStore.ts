@@ -458,13 +458,22 @@ export const useGameStore = create<GameStore>((set, get) => ({
     let isGameOver = newScore >= 121;
     let winner = null;
     let newPhase = phase;
-    if (isGameOver) {
-      winner = player;
-      newPhase = 'gameOver' as GamePhase;
-    }
     const newScores = { ...scores, [player]: newScore };
     set({ scores: newScores, winner, phase: newPhase, isGameOver: isGameOver });
     saveGameState({ scores: newScores, winner, phase: newPhase, isGameOver: isGameOver });
+
+    if (isGameOver) {
+      setTimeout(() => {
+      const newState = {
+        ...get(),
+        isGameOver: true,
+        winner,
+        phase: 'gameOver' as GamePhase,
+      };
+      set(newState);
+      saveGameState(newState);
+    }, 1000);
+    }
   },
 
   startScoring: () => {

@@ -10,7 +10,7 @@
 - [x] award the last point at the appropriate time - v1.0
 - [x] Points shouldn't go past 121 - v1.0
 - [x] game should stop when 121 is reached regardless of phase - v1.0
-- [ ] Fix scoring during hand scoring - v1.0 - something is wrong with runs of 4+
+- [x] Fix scoring during hand scoring - v1.0 - something is wrong with runs of 4+
 - [ ] add game finished message - v1.0
 - [ ] add function for determining best discard - v1.1
 - [ ] incorporate best discard into AI - v1.1
