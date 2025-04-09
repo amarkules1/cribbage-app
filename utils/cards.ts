@@ -78,13 +78,20 @@ export function calculatePairs(cards: Card[]): number {
 
 export function calculateRuns(cards: Card[]): number {
   let combos = enumerateCardCombinations(cards);
-  let total = 0;
+  let runsOfFive = 0;
+  let runsOfFour = 0;
+  let runsOfThree = 0;
   for (let combo of combos) {
-    if (combo.length >= 3 && isConsecutive(combo.map(card => RANKS.indexOf(card.rank)))) {
-      total += combo.length;
+    if (isConsecutive(combo.map(card => RANKS.indexOf(card.rank)))) {
+      if (combo.length === 5) runsOfFive++;
+      if (combo.length === 4) runsOfFour++;
+      if (combo.length === 3) runsOfThree++;
     }
   }
-  return total;
+  if (runsOfFive > 0) return runsOfFive * 5;
+  if (runsOfFour > 0) return runsOfFour * 4;
+  if (runsOfThree > 0) return runsOfThree * 3;
+  return 0;
 }
 
 export function calculateFlush(cards: Card[], starter: Card | null): number {
